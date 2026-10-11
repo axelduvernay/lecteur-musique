@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Musique — réglages</title>
+  <link rel="icon" href="icons/icone-192.png">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="js/admin.js"></script>
+</head>
+<body>
+<main class="ecran admin">
+  <h1>Réglages du lecteur</h1>
+  <p id="resume">Un instant…</p>
+
+  <div class="ligne">
+    <button id="autoriser" type="button" class="plein" hidden>Autoriser l’accès au dossier</button>
+    <button id="rescanner" type="button">Rescanner le dossier</button>
+    <button id="changer" type="button" hidden>Changer de dossier musique</button>
+    <a href="./">Ouvrir le lecteur</a>
+  </div>
+
+  <h2>Morceaux retirés</h2>
+  <p id="aucun" hidden>Aucun morceau retiré.</p>
+  <ul id="masques"></ul>
+</main>
+</body>
+</html>

@@ -1,0 +1,6 @@
+.DS_Store
+*.mp3
+*.m4a
+*.aac
+*.wav
+.lecteur-data.json

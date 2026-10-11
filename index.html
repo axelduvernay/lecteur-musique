@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Musique</title>
+  <meta name="theme-color" content="#0b3d91">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Musique">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icone-192.png">
+  <link rel="apple-touch-icon" href="icons/icone-180.png">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+
+<svg hidden>
+  <symbol id="i-lecture" viewBox="0 0 24 24"><path d="M7 4.6v14.8a1 1 0 0 0 1.52.85l12.1-7.4a1 1 0 0 0 0-1.7L8.52 3.75A1 1 0 0 0 7 4.6z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="5" y="4" width="5" height="16" rx="1.2"/><rect x="14" y="4" width="5" height="16" rx="1.2"/></symbol>
+  <symbol id="i-precedent" viewBox="0 0 24 24"><rect x="4" y="4.5" width="3" height="15" rx="1"/><path d="M20 5.2v13.6a.8.8 0 0 1-1.23.67L8.4 12.67a.8.8 0 0 1 0-1.34l10.37-6.8A.8.8 0 0 1 20 5.2z"/></symbol>
+  <symbol id="i-suivant" viewBox="0 0 24 24"><rect x="17" y="4.5" width="3" height="15" rx="1"/><path d="M4 5.2v13.6a.8.8 0 0 0 1.23.67l10.37-6.8a.8.8 0 0 0 0-1.34L5.23 4.53A.8.8 0 0 0 4 5.2z"/></symbol>
+  <symbol id="i-coeur" viewBox="0 0 24 24"><path d="M12 20.5 3.6 12.1a5.2 5.2 0 0 1 7.35-7.35L12 5.8l1.05-1.05a5.2 5.2 0 0 1 7.35 7.35z"/></symbol>
+  <symbol id="i-coeur-vide" viewBox="0 0 24 24"><path d="M12 20.5 3.6 12.1a5.2 5.2 0 0 1 7.35-7.35L12 5.8l1.05-1.05a5.2 5.2 0 0 1 7.35 7.35z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-points" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.3"/><circle cx="12" cy="12" r="2.3"/><circle cx="19" cy="12" r="2.3"/></symbol>
+  <symbol id="i-retour" viewBox="0 0 24 24"><path d="M11 5l-7 7 7 7M4.5 12H20" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-retirer" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M7.5 12h9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+</svg>
+
+<!-- Écran principal : accueil, puis lecture -->
+<main id="principal" class="ecran" data-etat="attente">
+  <section class="accueil">
+    <p id="message" class="message">Un instant…</p>
+    <button id="btn-action" type="button" hidden></button>
+  </section>
+
+  <section class="lecture">
+    <p id="bandeau-favoris" class="bandeau" hidden>
+      <svg class="icone" aria-hidden="true"><use href="#i-coeur"/></svg>
+      <span>Vous écoutez vos favoris</span>
+      <button id="btn-tout" type="button"><svg class="icone" aria-hidden="true"><use href="#i-lecture"/></svg><span>Tout écouter</span></button>
+    </p>
+
+    <div class="morceau-actuel" aria-live="polite">
+      <h1 id="titre"></h1>
+      <p id="artiste"></p>
+    </div>
+
+    <div class="rangee">
+      <button id="btn-favori" type="button" aria-pressed="false"></button>
+      <button id="btn-menu" type="button"><svg class="icone" aria-hidden="true"><use href="#i-points"/></svg><span>Autres choix</span></button>
+    </div>
+
+    <div class="commandes">
+      <button id="btn-precedent" type="button"><svg class="icone" aria-hidden="true"><use href="#i-precedent"/></svg><span>Précédent</span></button>
+      <button id="btn-pause" type="button" class="plein"></button>
+      <button id="btn-suivant" type="button"><span>Suivant</span><svg class="icone" aria-hidden="true"><use href="#i-suivant"/></svg></button>
+    </div>
+
+    <label id="zone-volume" class="volume">
+      <span>Volume</span>
+      <input id="volume" type="range" min="0" max="100" step="1" value="80">
+    </label>
+  </section>
+
+  <footer>
+    <button id="btn-choisir" type="button" class="lien" hidden>Choisir un morceau</button>
+  </footer>
+</main>
+
+<!-- Écran « Choisir un morceau » -->
+<section id="choisir" class="ecran" hidden>
+  <header class="entete">
+    <button id="btn-retour" type="button"><svg class="icone" aria-hidden="true"><use href="#i-retour"/></svg><span>Retour</span></button>
+    <h2>Choisir un morceau</h2>
+  </header>
+
+  <div class="outils">
+    <input id="recherche" type="search" placeholder="Chercher un titre ou un artiste" aria-label="Chercher un titre ou un artiste" autocomplete="off">
+
+    <div class="ligne">
+      <span class="etiquette">Trier par</span>
+      <button type="button" class="choix" data-tri="titre" aria-pressed="true">Titre</button>
+      <button type="button" class="choix" data-tri="artiste" aria-pressed="false">Artiste</button>
+      <label class="etiquette espace" for="filtre-artiste">Artiste</label>
+      <select id="filtre-artiste"><option value="">Tous les artistes</option></select>
+    </div>
+
+    <div class="ligne">
+      <button id="filtre-favoris" type="button" class="choix" aria-pressed="false"><svg class="icone" aria-hidden="true"><use href="#i-coeur"/></svg><span>Mes favoris</span></button>
+      <button id="btn-ecouter-favoris" type="button"><svg class="icone" aria-hidden="true"><use href="#i-lecture"/></svg><span>Écouter mes favoris en aléatoire</span></button>
+      <button id="btn-ajouter" type="button" hidden><svg class="icone" aria-hidden="true"><use href="#i-plus"/></svg><span>Ajouter des morceaux</span></button>
+    </div>
+  </div>
+
+  <p id="liste-vide" class="message" hidden></p>
+  <ul id="liste"></ul>
+  <div id="sentinelle"></div>
+</section>
+
+<!-- Menu « Autres choix » et confirmation -->
+<dialog id="menu" aria-labelledby="menu-titre">
+  <div id="menu-choix">
+    <p id="menu-titre" class="dialogue-titre"></p>
+    <button id="menu-retirer" type="button"><svg class="icone" aria-hidden="true"><use href="#i-retirer"/></svg><span>Retirer ce morceau</span></button>
+    <button id="menu-fermer" type="button">Fermer</button>
+  </div>
+  <div id="menu-confirmer" hidden>
+    <p class="dialogue-titre">Retirer ce morceau ?</p>
+    <p id="menu-rappel" class="dialogue-texte"></p>
+    <div class="oui-non">
+      <button id="menu-oui" type="button" class="plein">Oui</button>
+      <button id="menu-non" type="button">Non</button>
+    </div>
+  </div>
+</dialog>
+
+<p id="avancement" class="avancement" role="status" hidden></p>
+<input id="import" type="file" multiple accept="audio/*,.mp3,.m4a,.aac,.wav" hidden>
+
+</body>
+</html>
