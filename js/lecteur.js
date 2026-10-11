@@ -28,7 +28,8 @@ function melanger(t) {
 // surPiste(id | null) : le morceau en cours a changé · surEtat() : lecture/pause a changé
 // surTemps(position, duree) : la position a avancé
 // surPanne('acces' | 'lecture') : la lecture s'est arrêtée toute seule
-export function creerLecteur({ getFile, surPiste, surEtat, surTemps, surPanne }) {
+// gainPour(id) : volume propre au morceau, de 0 à 1 (égalisation des niveaux)
+export function creerLecteur({ getFile, gainPour, surPiste, surEtat, surTemps, surPanne }) {
   const audio = new Audio();
   audio.preload = 'auto';
 
@@ -43,6 +44,29 @@ export function creerLecteur({ getFile, surPiste, surEtat, surTemps, surPanne })
   let jeton = 0;          // annule un chargement quand on change de morceau entre-temps
   let echecs = 0;
   let deverrouille = false;
+  let volume = 1;         // réglage de l'utilisateur
+  let gain = 1;           // correction du morceau en cours, jamais au-dessus de 1
+  let rampe = 0;
+
+  const appliquerVolume = () => { audio.volume = Math.min(1, Math.max(0, volume * gain)); };
+
+  // En cours de morceau, la correction arrive en douceur pour ne pas s'entendre.
+  function fixerGain(cible, doucement) {
+    clearInterval(rampe);
+    cible = Math.min(1, Math.max(0.05, cible || 1));
+    if (!doucement || audio.paused) {
+      gain = cible;
+      return appliquerVolume();
+    }
+    const depart = gain;
+    const debut = performance.now();
+    rampe = setInterval(() => {
+      const t = Math.min(1, (performance.now() - debut) / 1800);
+      gain = depart + (cible - depart) * t;
+      appliquerVolume();
+      if (t === 1) clearInterval(rampe);
+    }, 40);
+  }
 
   const enCours = () => url !== '' && audio.src === url;
 
@@ -137,6 +161,7 @@ export function creerLecteur({ getFile, surPiste, surEtat, surTemps, surPanne })
     if (j !== jeton) return;
     if (url) URL.revokeObjectURL(url);
     url = URL.createObjectURL(fichier);
+    fixerGain(gainPour(id), false);
     audio.src = url;
     audio.play().catch(() => {}); // un fichier illisible déclenche l'événement « error »
     surEtat();
@@ -161,7 +186,10 @@ export function creerLecteur({ getFile, surPiste, surEtat, surTemps, surPanne })
     get courant() { return courant; },
     get enPause() { return audio.paused; },
     get duree() { return enCours() && Number.isFinite(audio.duration) ? audio.duration : 0; },
-    set volume(v) { audio.volume = Math.min(1, Math.max(0, v)); },
+    set volume(v) { volume = v; appliquerVolume(); },
+    get gain() { return gain; },
+    // Le niveau du morceau vient d'être mesuré : on l'applique s'il joue encore.
+    ajusterGain(id, valeur) { if (id === courant) fixerGain(valeur, true); },
 
     get aleatoire() { return aleatoire; },
     set aleatoire(oui) {

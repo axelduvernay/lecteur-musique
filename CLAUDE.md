@@ -40,6 +40,7 @@ Couche « source » commune, 2 implémentations choisies par détection (`'showD
 - **Lecteur** : vinyle qui tourne, titre, artiste, barre de progression (clic ou glissement pour se déplacer), aléatoire · précédent · lecture/pause · suivant · favori, volume, « Ensuite : … ». Sous 860 px : barre flottante en bas.
 - **Aléatoire** : actif à chaque lancement, en « sac » (pas de répétition avant la fin du tour). « Précédent » : morceau d'avant, ou début du morceau si plus de 3 s écoulées. « Lecture aléatoire » lance l'aléatoire sur la vue affichée.
 - La lecture porte sur la vue d'où elle a été lancée ; regarder l'autre vue ne change pas ce qui se joue.
+- **Niveaux égalisés** (PC seulement) : chaque morceau est mesuré une fois en LUFS, juste avant ou pendant sa première écoute (`js/niveau.js`, résultat gardé dans `meta`). Ceux qui dépassent −16 LUFS sont baissés d'autant (12 dB au plus) ; **rien n'est jamais amplifié**. Pas de réglage dans l'interface. Sur iPad, une page ne peut pas régler le volume : pas d'égalisation.
 - Barre d'espace = lecture / pause. Media Session (touches multimédia, écran verrouillé).
 - Morceau illisible → suivant, sans message technique.
 - Métadonnées : ID3 / MP4 ; repli sur `Artiste - Titre.mp3`, sinon le nom du fichier ; artiste absent → « Artiste inconnu ».
@@ -59,8 +60,9 @@ Ajout de musique à distance, cloud, comptes, pochettes, playlists (hors favoris
 ## Code
 - `index.html`, `style.css` · `js/app.js` : état et interface · `js/lecteur.js` : `<audio>`, aléatoire, historique, « Ensuite ».
 - `js/source.js` → `js/source-pc.js` (dossier) ou `js/source-ipad.js` (OPFS, + `js/opfs-worker.js` pour les vieux Safari).
+- `js/niveau.js` : mesure du niveau sonore (ITU-R BS.1770), vérifiée contre `ffmpeg -af ebur128`.
 - `js/tags.js` : titre, artiste et durée (ID3v2 / ID3v1 / MP4 / WAV), écrit pour le projet, aucune lib externe.
-- `js/kv.js` : IndexedDB (dossier choisi + clé `meta` : `[titre, artiste, durée]` déjà lus) · `js/donnees.js` : données et replis de nom.
+- `js/kv.js` : IndexedDB (dossier choisi + clé `meta` : `[titre, artiste, durée, niveau]` déjà lus) · `js/donnees.js` : données et replis de nom.
 - `admin.html`, `js/admin.js` · `sw.js` : cache.
 - Essai local : `python3 -m http.server 8765` puis `http://127.0.0.1:8765/` (pas de service worker en local). `?source=ipad` pour essayer la version iPad sur un ordinateur.
 

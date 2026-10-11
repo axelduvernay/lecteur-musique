@@ -1,7 +1,7 @@
 // Service worker : garde les fichiers de l'app pour un lancement rapide, même sans réseau.
 // À CHAQUE MISE EN LIGNE : augmenter le numéro de VERSION, sinon la mise à jour n'arrive pas.
 
-const VERSION = 'lecteur-v2';
+const VERSION = 'lecteur-v3';
 
 const FICHIERS = [
   './',
@@ -14,6 +14,7 @@ const FICHIERS = [
   'js/donnees.js',
   'js/kv.js',
   'js/lecteur.js',
+  'js/niveau.js',
   'js/opfs-worker.js',
   'js/source.js',
   'js/source-pc.js',

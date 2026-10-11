@@ -4,6 +4,7 @@ import * as kv from './kv.js';
 import { creerSource } from './source.js';
 import { creerLecteur } from './lecteur.js';
 import { lireTags } from './tags.js';
+import { mesurerNiveau } from './niveau.js';
 import { lireDonnees, decrire } from './donnees.js';
 
 const PRENOM = 'Rico';
@@ -20,7 +21,7 @@ const source = creerSource();
 const estIPad = source.type === 'ipad';
 
 const pistes = new Map(); // id → { id, titre, artiste, duree, cle }
-let meta = {};            // id → [titre, artiste, durée] lus dans les fichiers
+let meta = {};            // id → [titre, artiste, durée, niveau sonore] lus dans les fichiers
 let donnees = { favoris: [], masques: [], volume: 0.8, vue: 'tout' };
 let favoris = new Set();
 let masques = new Set();
@@ -31,6 +32,7 @@ let tri = 'titre';
 
 const lecteur = creerLecteur({
   getFile: (id) => source.getFile(id),
+  gainPour: (id) => gainDe(meta[id] && meta[id][3]),
   surPiste: majPiste,
   surEtat: majLecture,
   surTemps: majTemps,
@@ -120,7 +122,7 @@ async function charger() {
 
 // Lit titres, artistes et durées en tâche de fond ; le résultat est gardé pour les lancements suivants.
 let passe = 0;
-const estLu = (id) => Array.isArray(meta[id]) && meta[id].length === 3;
+const estLu = (id) => Array.isArray(meta[id]) && meta[id].length >= 3;
 
 async function lireMeta(p) {
   let tags;
@@ -131,7 +133,9 @@ async function lireMeta(p) {
   }
   // La durée mesurée pendant la lecture est plus fiable que celle estimée.
   const connue = estLu(p.id) ? meta[p.id][2] : 0;
+  const niveau = estLu(p.id) ? meta[p.id][3] : undefined;
   meta[p.id] = [tags.titre, tags.artiste, connue || tags.duree];
+  if (niveau !== undefined) meta[p.id][3] = niveau;
   appliquerMeta(p);
   majLigne(p);
   if (p.id === lecteur.courant) majPiste(p.id);
@@ -153,6 +157,42 @@ async function indexer() {
   sauverMeta();
   majCompte();
   majEnsuite();
+}
+
+// ───────────── Égalisation des niveaux ─────────────
+// Chaque morceau est mesuré une fois (juste avant ou pendant sa première écoute). Ceux qui
+// dépassent le niveau visé sont baissés d'autant ; les autres ne sont jamais amplifiés.
+
+const NIVEAU_VISE = -16;    // LUFS
+const BAISSE_MAX = 12;      // dB
+const DUREE_MAX = 15 * 60;  // au-delà, le morceau n'est pas mesuré (trop lourd à décoder)
+
+function gainDe(niveau) {
+  if (typeof niveau !== 'number') return 1;
+  return 10 ** (Math.max(-BAISSE_MAX, Math.min(0, NIVEAU_VISE - niveau)) / 20);
+}
+
+let mesures = Promise.resolve();
+
+function preparerNiveau(id) {
+  if (!lecteur.volumeReglable) return; // iPad : une page ne peut pas régler le volume
+  mesures = mesures.then(async () => {
+    const p = pistes.get(id);
+    // Morceaux sautés entre-temps : inutile de les mesurer maintenant.
+    if (!p || (id !== lecteur.courant && id !== lecteur.apercu())) return;
+    if (!estLu(id)) await lireMeta(p);
+    if (!estLu(id) || meta[id][3] !== undefined) return;
+    let niveau = null;
+    try {
+      if (!(p.duree > DUREE_MAX)) niveau = await mesurerNiveau(await source.getFile(id));
+    } catch {
+      // fichier illisible : pas de correction
+    }
+    if (!estLu(id)) return;
+    meta[id][3] = niveau;
+    sauverMeta();
+    lecteur.ajusterGain(id, gainDe(niveau));
+  }).catch(() => {});
 }
 
 // ───────────── États : chargement, premier lancement, permission, vide ─────────────
@@ -528,6 +568,7 @@ function majPiste(id) {
     majPiste.dernier = id;
     rejouer($('infos'), 'change');
     majTemps(0, p ? p.duree : 0, true);
+    if (p) preparerNiveau(id);
   }
   majFavori();
   marquerActuel();
@@ -551,6 +592,7 @@ function majEnsuite() {
   ligne.dataset.texte = texte;
   ligne.replaceChildren();
   if (!p) return;
+  preparerNiveau(p.id); // prêt avant que le morceau commence
   const titre = document.createElement('b');
   titre.textContent = p.titre;
   ligne.append('Ensuite : ', titre, ` · ${p.artiste}`);
