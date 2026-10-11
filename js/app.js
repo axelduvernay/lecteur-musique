@@ -37,6 +37,7 @@ const lecteur = creerLecteur({
   surEtat: majLecture,
   surTemps: majTemps,
   surPanne,
+  surTour: sauverTour,
 });
 
 // ───────────── Morceaux et données ─────────────
@@ -83,6 +84,14 @@ function sauver(delai = 0) {
   }, delai);
 }
 
+// Ce qui a déjà été joué est gardé d'un lancement à l'autre : l'aléatoire ne repart pas de zéro.
+let sauvegardeTour = 0;
+let tourRestaure = false;
+function sauverTour() {
+  clearTimeout(sauvegardeTour);
+  sauvegardeTour = setTimeout(() => kv.ecrire('tour', lecteur.tour).catch(() => {}), 1200);
+}
+
 let sauvegardeMeta = 0;
 function sauverMeta() {
   clearTimeout(sauvegardeMeta);
@@ -104,6 +113,12 @@ async function charger() {
       pistes.set(id, p);
     }
     for (const id of Object.keys(meta)) if (!pistes.has(id)) delete meta[id];
+    if (!tourRestaure) {
+      tourRestaure = true;
+      const tour = (await kv.lire('tour').catch(() => null)) || {};
+      const connus = (liste) => (Array.isArray(liste) ? liste.filter((id) => pistes.has(id)) : []);
+      lecteur.restaurerTour({ joues: connus(tour.joues), recents: connus(tour.recents) });
+    }
   } catch {
     return definirEtat(estIPad ? 'vide' : 'installer');
   }

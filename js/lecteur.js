@@ -1,4 +1,4 @@
-// Moteur de lecture : un seul élément <audio>, aléatoire « en sac », historique.
+// Moteur de lecture : un seul élément <audio>, aléatoire sans répétition, historique.
 
 // Silence très court : joué au premier clic, il autorise Safari à enchaîner les morceaux.
 const SILENCE = (() => {
@@ -15,28 +15,23 @@ const SILENCE = (() => {
 
 const HISTORIQUE_MAX = 500;
 const ECHECS_MAX = 25;
-
-function melanger(t) {
-  // Fisher-Yates
-  for (let i = t.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [t[i], t[j]] = [t[j], t[i]];
-  }
-  return t;
-}
+const RECENTS_MAX = 60;
 
 // surPiste(id | null) : le morceau en cours a changé · surEtat() : lecture/pause a changé
 // surTemps(position, duree) : la position a avancé
 // surPanne('acces' | 'lecture') : la lecture s'est arrêtée toute seule
 // gainPour(id) : volume propre au morceau, de 0 à 1 (égalisation des niveaux)
-export function creerLecteur({ getFile, gainPour, surPiste, surEtat, surTemps, surPanne }) {
+// surTour() : la mémoire de l'aléatoire a changé (à enregistrer)
+export function creerLecteur({ getFile, gainPour, surPiste, surEtat, surTemps, surPanne, surTour }) {
   const audio = new Audio();
   audio.preload = 'auto';
 
   let ordre = [];         // morceaux jouables, dans l'ordre affiché
   let portee = new Set(); // les mêmes, pour les tests rapides
   let aleatoire = true;
-  let sac = [];           // reste du tour aléatoire, déjà mélangé (on prend à la fin)
+  let joues = new Set();  // déjà passés dans le tour en cours ; gardé d'un lancement à l'autre
+  let recents = [];       // derniers morceaux joués, du plus ancien au plus récent
+  let annonce = null;     // prochain morceau déjà tiré (c'est lui qu'affiche « Ensuite »)
   let historique = [];
   let curseur = -1;       // position dans l'historique
   let courant = null;
@@ -74,20 +69,37 @@ export function creerLecteur({ getFile, gainPour, surPiste, surEtat, surTemps, s
     historique.push(id);
     if (historique.length > HISTORIQUE_MAX) historique.shift();
     curseur = historique.length - 1;
+    joues.add(id);
+    recents.push(id);
+    if (recents.length > RECENTS_MAX) recents.shift();
+    if (surTour) surTour();
     return id;
   }
 
-  // Prochain morceau hors historique. Aléatoire : pas de répétition avant la fin du tour.
+  // Tire au hasard parmi les morceaux pas encore passés. Quand tout est passé, un nouveau
+  // tour commence, mais sans les derniers morceaux entendus : ils attendront le tour d'après.
+  function tirer() {
+    const libres = () => ordre.filter((id) => !joues.has(id) && id !== courant);
+    let restants = libres();
+    if (!restants.length) {
+      const nombre = Math.min(25, Math.floor(ordre.length / 3));
+      const gardes = new Set(nombre ? recents.slice(-nombre) : []);
+      for (const id of ordre) if (!gardes.has(id)) joues.delete(id);
+      restants = libres();
+      if (!restants.length) restants = ordre.filter((id) => id !== courant);
+      if (!restants.length) restants = ordre; // un seul morceau
+    }
+    return restants[Math.floor(Math.random() * restants.length)];
+  }
+
+  // Prochain morceau hors historique.
   function nouveau(consommer) {
     if (!ordre.length) return null;
     if (!aleatoire) return ordre[(ordre.indexOf(courant) + 1) % ordre.length];
-    if (!sac.length) {
-      sac = melanger([...ordre]);
-      // Nouveau tour : ne pas rejouer tout de suite le morceau qui vient de passer.
-      const dernier = sac.length - 1;
-      if (dernier > 0 && sac[dernier] === courant) [sac[0], sac[dernier]] = [sac[dernier], sac[0]];
-    }
-    return consommer ? sac.pop() : sac[sac.length - 1];
+    if (annonce === null || !portee.has(annonce) || joues.has(annonce) || annonce === courant) annonce = tirer();
+    const id = annonce;
+    if (consommer) annonce = null;
+    return id;
   }
 
   // Le morceau qui suivra, sans rien changer.
@@ -194,7 +206,7 @@ export function creerLecteur({ getFile, gainPour, surPiste, surEtat, surTemps, s
     get aleatoire() { return aleatoire; },
     set aleatoire(oui) {
       aleatoire = !!oui;
-      sac = aleatoire ? melanger(ordre.filter((id) => id !== courant)) : [];
+      annonce = null;
       historique.length = curseur + 1; // ce qui suit est recalculé
     },
 
@@ -211,26 +223,22 @@ export function creerLecteur({ getFile, gainPour, surPiste, surEtat, surTemps, s
       ordre = [...ids];
       portee = new Set(ordre);
       historique.length = curseur + 1;
-      if (premier == null) {
-        sac = [];
-        suivant();
-      } else {
-        sac = aleatoire ? melanger(ordre.filter((id) => id !== premier)) : [];
-        lire(noter(premier));
-      }
+      if (premier == null) suivant();
+      else lire(noter(premier));
     },
 
     // La liste des morceaux jouables a changé (favori, tri, morceau ajouté).
     definirPortee(ids) {
-      const avant = portee;
       ordre = [...ids];
       portee = new Set(ordre);
-      sac = sac.filter((id) => portee.has(id));
-      if (sac.length) {
-        for (const id of ordre) {
-          if (!avant.has(id) && id !== courant) sac.splice(Math.floor(Math.random() * (sac.length + 1)), 0, id);
-        }
-      }
+    },
+
+    // Mémoire de l'aléatoire, à enregistrer et à redonner au lancement suivant.
+    get tour() { return { joues: [...joues], recents: [...recents] }; },
+    restaurerTour(tour) {
+      joues = new Set(tour && Array.isArray(tour.joues) ? tour.joues : []);
+      recents = tour && Array.isArray(tour.recents) ? tour.recents.slice(-RECENTS_MAX) : [];
+      annonce = null;
     },
 
     apercu,
