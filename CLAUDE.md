@@ -1,105 +1,71 @@
-# Lecteur musique — Grand-père
+# Musique — lecteur de Rico
 
 ## Contexte
-- Utilisateur : mon grand-père. Peu à l'aise avec l'informatique, utilise Chrome au quotidien. L'app remplace iTunes, qui fonctionne mal chez lui.
+- Utilisateur : Rico, mon grand-père. Peu à l'aise avec l'informatique, utilise Chrome au quotidien. L'app remplace iTunes, qui fonctionne mal chez lui.
 - Appareils : PC Windows un peu lent, écran desktop classique, souris. iPad en second.
 - Usage principal : il lance tout en lecture aléatoire.
 - **Principe n°1 : le strict minimum.** Chaque élément ajouté à l'interface doit être justifié.
 
+## Références de design
+- `design/BRIEF.md` et `design/maquette-pc.dc.html` (maquette d'un outil de design : ne lire que les styles, ignorer `<x-dc>`, `{{ … }}`, `support.js`).
+- Demandes d'Axel par-dessus la maquette (12 oct. 2026) : rendu **Apple, vraiment premium**, encore plus d'air, petites animations très fluides partout, police d'accueil **moins condensée** que l'Instrument Serif de la maquette (→ Newsreader).
+- Pas de maquette iPad fournie : le repli (vues en contrôle segmenté, lecteur en barre flottante) est déduit du brief.
+
 ## Stack
 - Site statique : HTML / CSS / JavaScript vanilla (modules ES). Pas de framework, pas d'étape de build.
-- Hébergement : GitHub Pages (repo public). **Aucun MP3 et aucun secret dans le repo.**
+- Hébergement : GitHub Pages, dépôt public `axelduvernay/lecteur-musique`, branche `main`. **Aucun MP3 et aucun secret dans le repo.**
 - PWA : `manifest.json` + service worker (cache des fichiers de l'app pour un lancement rapide).
-  - PC : installable via Chrome (« Installer l'application ») → icône sur le bureau.
-  - iPad : « Sur l'écran d'accueil » dans Safari.
-- Aucune base de données, aucun compte, aucun backend, aucun appel réseau au runtime.
-- Lecture des métadonnées (titre, artiste) : petite lib ID3 copiée dans le repo (pas de CDN). Si pas de métadonnées → titre = nom du fichier sans extension, artiste = « Artiste inconnu ».
+- Aucune base de données, aucun compte, aucun backend, **aucun appel réseau au runtime** : les polices (Inter, Newsreader) sont copiées dans `fonts/`, pas de CDN.
 - Formats lus : `.mp3` (principal), `.m4a`, `.aac`, `.wav`.
 
 ## Accès aux fichiers
-Créer une couche « source » commune avec 2 implémentations, choisie par détection (`'showDirectoryPicker' in window`) :
+Couche « source » commune, 2 implémentations choisies par détection (`'showDirectoryPicker' in window`) :
 `listTracks()`, `getFile(id)`, `readData()`, `writeData(data)`.
 
 ### PC — Chrome (File System Access API)
-- Premier lancement : `showDirectoryPicker({ mode: 'readwrite' })` → je choisis son dossier musique (une seule fois).
-- Stocker le `FileSystemDirectoryHandle` dans IndexedDB. Aux lancements suivants : `queryPermission` / `requestPermission`. Une app installée garde la permission.
-- Si la permission est perdue : afficher un seul gros bouton « Autoriser l'accès à ma musique ».
-- Rescanner le dossier à chaque lancement → les morceaux ajoutés dans le dossier apparaissent automatiquement.
-- Données de l'app (favoris, morceaux masqués, volume) dans `.lecteur-data.json` à la racine du dossier musique.
+- « Définir le dossier » : `showDirectoryPicker({ mode: 'readwrite' })`. Le handle est gardé dans IndexedDB ; aux lancements suivants `queryPermission` / `requestPermission`.
+- Permission perdue : écran avec un seul bouton « Autoriser l'accès à ma musique ».
+- Le dossier est rescanné à chaque lancement.
+- Données de l'app (favoris, morceaux masqués, volume, vue) dans `.lecteur-data.json` à la racine du dossier musique (choix gardé plutôt que le `localStorage` du brief : les favoris suivent le dossier).
 
-### iPad — Safari (pas de sélection de dossier possible)
-- Bouton « Ajouter des morceaux » : `<input type="file" multiple accept="audio/*">`, puis copie des fichiers dans l'OPFS (`navigator.storage.getDirectory()`).
-- Appeler `navigator.storage.persist()`.
-- Données de l'app stockées dans l'OPFS aussi.
-- Si le nom de fichier est perdu à l'import, se baser sur les métadonnées.
-- **À tester tôt** : persistance du stockage dans le temps, lecture qui continue écran verrouillé.
+### iPad — Safari
+- « Ajouter des morceaux » : `<input type="file" multiple>`, copie dans l'OPFS, `navigator.storage.persist()`. Données de l'app dans l'OPFS aussi.
+- Le volume ne se règle pas depuis une page sur iOS : le curseur est masqué.
+- **À tester sur l'appareil** : persistance du stockage dans le temps, lecture qui continue écran verrouillé.
 
-## Écran principal
-- **Au lancement** : un très grand bouton « ▶ Écouter », centré → lance tous les morceaux (non masqués) en aléatoire.
-- **Pendant la lecture** :
-  - Titre et artiste en gros.
-  - ♥ Favori, visible à côté du titre (bascule ajouté / retiré).
-  - Boutons : ⏮ Précédent · ⏸ Pause / ▶ Reprendre · ⏭ Suivant.
-  - Volume : grand curseur dans l'app.
-  - Menu ⋯ à côté du morceau : « Retirer ce morceau ».
-- Aléatoire toujours actif, **pas de bouton pour le couper**. Ordre mélangé (Fisher-Yates) ; « Précédent » revient dans l'historique ; en fin de liste, nouveau mélange sans répéter le dernier morceau.
-- Pas de pochette.
-- Lien discret en bas : « Choisir un morceau ».
-- La musique ne s'arrête jamais en changeant d'écran (une seule page, un seul élément `<audio>`).
-- Morceau illisible → passer automatiquement au suivant, sans message d'erreur technique.
+## Interface (un seul écran)
+- **En-tête** : message d'accueil en machine à écrire (« Salut Rico ! » puis, en italique, « On écoute quoi ce matin / cet après-midi / ce soir ? »), curseur orange qui s'efface ; bouton « Définir le dossier » (iPad : « Ajouter des morceaux »).
+- **Vues** : « Favoris » et « Tout » avec le nombre de morceaux (barre latérale ; contrôle segmenté sous 1180 px). La vue est mémorisée.
+- **Liste** : titre, artiste, durée ; clic = lecture (clic sur le morceau en cours = pause) ; morceau en cours en orange + égaliseur animé ; cœur par ligne (au survol sur PC, toujours visible si favori ou sur écran tactile) ; recherche sans accents ; tri Titre / Artiste.
+- **Lecteur** : vinyle qui tourne, titre, artiste, barre de progression (clic ou glissement pour se déplacer), aléatoire · précédent · lecture/pause · suivant · favori, volume, « Ensuite : … ». Sous 860 px : barre flottante en bas.
+- **Aléatoire** : actif à chaque lancement, en « sac » (pas de répétition avant la fin du tour). « Précédent » : morceau d'avant, ou début du morceau si plus de 3 s écoulées. « Lecture aléatoire » lance l'aléatoire sur la vue affichée.
+- La lecture porte sur la vue d'où elle a été lancée ; regarder l'autre vue ne change pas ce qui se joue.
+- Barre d'espace = lecture / pause. Media Session (touches multimédia, écran verrouillé).
+- Morceau illisible → suivant, sans message technique.
+- Métadonnées : ID3 / MP4 ; repli sur `Artiste - Titre.mp3`, sinon le nom du fichier ; artiste absent → « Artiste inconnu ».
+- « Retirer un morceau » n'est plus dans l'interface (absent de la maquette). Les morceaux masqués restent gérés par `admin.html` (page non liée : remettre un morceau, rescanner, changer de dossier).
 
-## Écran « Choisir un morceau »
-- Champ de recherche (titre ou artiste).
-- Tri : titre / artiste. Filtre par artiste.
-- Filtre « ♥ Mes favoris » + bouton « Écouter mes favoris en aléatoire ». *(Fonctionnement des favoris à valider.)*
-- Grande liste ; un clic sur un morceau → lecture.
-- Bouton « ← Retour » toujours visible.
-- Sur iPad uniquement : bouton « Ajouter des morceaux ».
-
-## Retirer un morceau
-- Ne supprime **jamais** le fichier : le morceau est seulement masqué dans l'app.
-- Confirmation obligatoire : « Retirer ce morceau ? » → « Oui » / « Non ».
-- Page `admin.html`, non liée dans l'interface (pour moi) :
-  - liste des morceaux masqués avec un bouton « Remettre » ;
-  - rescanner le dossier ;
-  - changer de dossier musique.
-
-## Règles UX
-- Responsive : pensé d'abord pour un écran desktop à la souris, doit fonctionner sur iPad et téléphone.
-- Tout est gros : bouton « Écouter » énorme, autres boutons ≥ 64 px de haut, texte courant ≥ 20 px, titre du morceau ≥ 32 px.
-- Contraste élevé (WCAG AA minimum).
-- Simple clic partout. Rien qui dépende du survol, du double-clic, du clic droit ou du glisser-déposer.
-- Toujours une icône **avec** un libellé texte, jamais une icône seule.
-- Menu ⋯ : grandes zones cliquables, texte clair.
+## Design
+- Couleurs : fond `#F5EFE7` · surface `#FBF8F3` · champs `#ECE4DA` · filets `#E5DBCF` · texte `#1D1A17` · secondaire `#6E6359` · accent `#C24E12` (texte orange `#A8430F`).
+- Polices : Newsreader (message d'accueil uniquement) + Inter 400/500/600.
+- Un seul bouton plein par écran. Cibles ≥ 44 px, texte de liste ≥ 16 px, bon contraste (utilisateur âgé).
+- Animations : courbes `--doux` et `--ressort` de `style.css` ; tout est coupé avec `prefers-reduced-motion`.
+- Mise en page à hauteur fixe (seule la liste défile) ; la carte du lecteur doit tenir entière jusqu'à 1366 × 650.
 - Français simple, aucun jargon.
-- Animations courtes et discrètes.
-- Media Session API : titre/artiste dans les contrôles système, touches multimédia du clavier, écran verrouillé de l'iPad.
 
 ## Hors périmètre
 Ajout de musique à distance, cloud, comptes, pochettes, playlists (hors favoris), égaliseur.
 
-## Ordre de développement
-1. Squelette PWA + accès au dossier sur PC + lecture aléatoire basique.
-2. Contrôles : précédent, pause, suivant, volume + Media Session.
-3. Métadonnées + écran « Choisir un morceau ».
-4. Favoris + retirer un morceau + fichier `.lecteur-data.json`.
-5. Page admin.
-6. Version iPad (import + OPFS).
-7. Test sur le PC du grand-père : installation Chrome, permission qui persiste, lancement rapide.
+## Code
+- `index.html`, `style.css` · `js/app.js` : état et interface · `js/lecteur.js` : `<audio>`, aléatoire, historique, « Ensuite ».
+- `js/source.js` → `js/source-pc.js` (dossier) ou `js/source-ipad.js` (OPFS, + `js/opfs-worker.js` pour les vieux Safari).
+- `js/tags.js` : titre, artiste et durée (ID3v2 / ID3v1 / MP4 / WAV), écrit pour le projet, aucune lib externe.
+- `js/kv.js` : IndexedDB (dossier choisi + clé `meta` : `[titre, artiste, durée]` déjà lus) · `js/donnees.js` : données et replis de nom.
+- `admin.html`, `js/admin.js` · `sw.js` : cache.
+- Essai local : `python3 -m http.server 8765` puis `http://127.0.0.1:8765/` (pas de service worker en local). `?source=ipad` pour essayer la version iPad sur un ordinateur.
 
 ## Déploiement
-- GitHub Pages depuis la branche `main`.
-- Incrémenter la version du cache du service worker à chaque mise en ligne, pour que la mise à jour arrive chez lui.
+- GitHub Pages depuis `main`. **Incrémenter `VERSION` dans `sw.js` à chaque mise en ligne**, et y ajouter tout nouveau fichier.
 
-## État du code (octobre 2026)
-Étapes 1 à 6 codées et vérifiées dans un navigateur de bureau ; reste l'étape 7 (essais sur le vrai PC et le vrai iPad).
-- `index.html`, `style.css` : une seule page, deux écrans (principal, « Choisir un morceau »).
-- `js/app.js` : état et interface · `js/lecteur.js` : `<audio>`, aléatoire, historique.
-- `js/source.js` → `js/source-pc.js` (dossier) ou `js/source-ipad.js` (OPFS, + `js/opfs-worker.js` pour les vieux Safari).
-- `js/tags.js` : lecteur ID3v2 / ID3v1 / MP4 écrit pour le projet (aucune lib externe).
-- `js/kv.js` : IndexedDB (dossier choisi + titres déjà lus, clé `meta`) · `js/donnees.js` : favoris, masqués, volume.
-- `admin.html`, `js/admin.js` : page admin · `sw.js` : cache (`VERSION` à incrémenter à chaque mise en ligne).
-- Essai local : `python3 -m http.server 8765` puis `http://127.0.0.1:8765/` (pas de service worker en local).
-  Ajouter `?source=ipad` pour essayer la version iPad sur un ordinateur.
-- Choix à valider (favoris) : « Écouter mes favoris » ne joue que les favoris, un bandeau « Vous écoutez vos favoris »
-  avec « Tout écouter » permet d'en sortir ; choisir un morceau hors favoris revient à tout.
+## Reste à faire
+- Essais sur le vrai PC (installation Chrome, permission qui persiste, vitesse avec toute la bibliothèque) et le vrai iPad.

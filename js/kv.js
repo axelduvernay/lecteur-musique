@@ -10,6 +10,11 @@ function ouvrir() {
     r.onupgradeneeded = () => r.result.createObjectStore(MAGASIN);
     r.onsuccess = () => ok(r.result);
     r.onerror = () => ko(r.error);
+    // Une base bloquée ne répond jamais : mieux vaut renoncer que rester sur « Un instant… ».
+    setTimeout(() => ko(new Error('base indisponible')), 4000);
+  }).catch((e) => {
+    ouverture = undefined;
+    throw e;
   });
   return ouverture;
 }

@@ -4,118 +4,149 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Musique</title>
-  <meta name="theme-color" content="#0b3d91">
+  <meta name="theme-color" content="#F5EFE7">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Musique">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/icone-192.png">
   <link rel="apple-touch-icon" href="icons/icone-180.png">
+  <link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/newsreader.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="style.css">
   <script type="module" src="js/app.js"></script>
 </head>
-<body>
+<body class="appli">
 
-<svg hidden>
-  <symbol id="i-lecture" viewBox="0 0 24 24"><path d="M7 4.6v14.8a1 1 0 0 0 1.52.85l12.1-7.4a1 1 0 0 0 0-1.7L8.52 3.75A1 1 0 0 0 7 4.6z"/></symbol>
-  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="5" y="4" width="5" height="16" rx="1.2"/><rect x="14" y="4" width="5" height="16" rx="1.2"/></symbol>
-  <symbol id="i-precedent" viewBox="0 0 24 24"><rect x="4" y="4.5" width="3" height="15" rx="1"/><path d="M20 5.2v13.6a.8.8 0 0 1-1.23.67L8.4 12.67a.8.8 0 0 1 0-1.34l10.37-6.8A.8.8 0 0 1 20 5.2z"/></symbol>
-  <symbol id="i-suivant" viewBox="0 0 24 24"><rect x="17" y="4.5" width="3" height="15" rx="1"/><path d="M4 5.2v13.6a.8.8 0 0 0 1.23.67l10.37-6.8a.8.8 0 0 0 0-1.34L5.23 4.53A.8.8 0 0 0 4 5.2z"/></symbol>
-  <symbol id="i-coeur" viewBox="0 0 24 24"><path d="M12 20.5 3.6 12.1a5.2 5.2 0 0 1 7.35-7.35L12 5.8l1.05-1.05a5.2 5.2 0 0 1 7.35 7.35z"/></symbol>
-  <symbol id="i-coeur-vide" viewBox="0 0 24 24"><path d="M12 20.5 3.6 12.1a5.2 5.2 0 0 1 7.35-7.35L12 5.8l1.05-1.05a5.2 5.2 0 0 1 7.35 7.35z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></symbol>
-  <symbol id="i-points" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.3"/><circle cx="12" cy="12" r="2.3"/><circle cx="19" cy="12" r="2.3"/></symbol>
-  <symbol id="i-retour" viewBox="0 0 24 24"><path d="M11 5l-7 7 7 7M4.5 12H20" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></symbol>
-  <symbol id="i-retirer" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M7.5 12h9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
-</svg>
+<div id="app" class="app" data-etat="attente" data-lecture="arret">
 
-<!-- Écran principal : accueil, puis lecture -->
-<main id="principal" class="ecran" data-etat="attente">
-  <section class="accueil">
-    <p id="message" class="message">Un instant…</p>
-    <button id="btn-action" type="button" hidden></button>
-  </section>
-
-  <section class="lecture">
-    <p id="bandeau-favoris" class="bandeau" hidden>
-      <svg class="icone" aria-hidden="true"><use href="#i-coeur"/></svg>
-      <span>Vous écoutez vos favoris</span>
-      <button id="btn-tout" type="button"><svg class="icone" aria-hidden="true"><use href="#i-lecture"/></svg><span>Tout écouter</span></button>
-    </p>
-
-    <div class="morceau-actuel" aria-live="polite">
-      <h1 id="titre"></h1>
-      <p id="artiste"></p>
-    </div>
-
-    <div class="rangee">
-      <button id="btn-favori" type="button" aria-pressed="false"></button>
-      <button id="btn-menu" type="button"><svg class="icone" aria-hidden="true"><use href="#i-points"/></svg><span>Autres choix</span></button>
-    </div>
-
-    <div class="commandes">
-      <button id="btn-precedent" type="button"><svg class="icone" aria-hidden="true"><use href="#i-precedent"/></svg><span>Précédent</span></button>
-      <button id="btn-pause" type="button" class="plein"></button>
-      <button id="btn-suivant" type="button"><span>Suivant</span><svg class="icone" aria-hidden="true"><use href="#i-suivant"/></svg></button>
-    </div>
-
-    <label id="zone-volume" class="volume">
-      <span>Volume</span>
-      <input id="volume" type="range" min="0" max="100" step="1" value="80">
-    </label>
-  </section>
-
-  <footer>
-    <button id="btn-choisir" type="button" class="lien" hidden>Choisir un morceau</button>
-  </footer>
-</main>
-
-<!-- Écran « Choisir un morceau » -->
-<section id="choisir" class="ecran" hidden>
-  <header class="entete">
-    <button id="btn-retour" type="button"><svg class="icone" aria-hidden="true"><use href="#i-retour"/></svg><span>Retour</span></button>
-    <h2>Choisir un morceau</h2>
+  <header class="haut">
+    <h1 class="salut">
+      <span id="salut-lu" class="sr"></span>
+      <span id="salut-place" class="salut-place" aria-hidden="true"></span>
+      <span id="salut-frappe" class="salut-frappe" aria-hidden="true"></span>
+    </h1>
+    <button id="btn-dossier" type="button" class="capsule contour">
+      <svg viewBox="0 0 24 24" class="trait" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.5h7.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>
+      <span id="btn-dossier-texte">Définir le dossier</span>
+    </button>
   </header>
 
-  <div class="outils">
-    <input id="recherche" type="search" placeholder="Chercher un titre ou un artiste" aria-label="Chercher un titre ou un artiste" autocomplete="off">
+  <div class="corps">
 
-    <div class="ligne">
-      <span class="etiquette">Trier par</span>
-      <button type="button" class="choix" data-tri="titre" aria-pressed="true">Titre</button>
-      <button type="button" class="choix" data-tri="artiste" aria-pressed="false">Artiste</button>
-      <label class="etiquette espace" for="filtre-artiste">Artiste</label>
-      <select id="filtre-artiste"><option value="">Tous les artistes</option></select>
-    </div>
+    <nav id="vues" class="vues glissiere" aria-label="Bibliothèque">
+      <span class="curseur" aria-hidden="true"></span>
+      <button type="button" data-vue="favoris" aria-pressed="false">
+        <svg viewBox="0 0 24 24" class="trait" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8.2 3.4 5 6.6 5c2 0 3.5 1.1 5.4 3.2C13.9 6.1 15.4 5 17.4 5c3.2 0 5.1 3.2 3.9 6.3-1.8 4.6-9.3 9.2-9.3 9.2z"/></svg>
+        <span class="vue-nom">Favoris</span>
+        <span id="n-favoris" class="vue-nombre">0</span>
+      </button>
+      <button type="button" data-vue="tout" aria-pressed="true">
+        <svg viewBox="0 0 24 24" class="trait" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
+        <span class="vue-nom">Tout</span>
+        <span id="n-tout" class="vue-nombre">0</span>
+      </button>
+    </nav>
 
-    <div class="ligne">
-      <button id="filtre-favoris" type="button" class="choix" aria-pressed="false"><svg class="icone" aria-hidden="true"><use href="#i-coeur"/></svg><span>Mes favoris</span></button>
-      <button id="btn-ecouter-favoris" type="button"><svg class="icone" aria-hidden="true"><use href="#i-lecture"/></svg><span>Écouter mes favoris en aléatoire</span></button>
-      <button id="btn-ajouter" type="button" hidden><svg class="icone" aria-hidden="true"><use href="#i-plus"/></svg><span>Ajouter des morceaux</span></button>
-    </div>
+    <main class="bibliotheque">
+
+      <div class="tete">
+        <div id="tete-textes" class="tete-textes">
+          <h2 id="vue-titre">Tous les morceaux</h2>
+          <p id="vue-compte"></p>
+        </div>
+        <button id="btn-aleatoire" type="button" class="capsule plein">
+          <svg viewBox="0 0 24 24" class="trait" aria-hidden="true"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="M4 4l5 5"/></svg>
+          <span>Lecture aléatoire</span>
+        </button>
+      </div>
+
+      <div class="outils">
+        <label class="recherche">
+          <svg viewBox="0 0 24 24" class="trait" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="recherche" type="search" placeholder="Rechercher" aria-label="Rechercher un titre ou un artiste" autocomplete="off" spellcheck="false">
+        </label>
+        <div id="tri" class="tri glissiere" role="group" aria-label="Trier par">
+          <span class="curseur" aria-hidden="true"></span>
+          <button type="button" data-tri="titre" aria-pressed="true">Titre</button>
+          <button type="button" data-tri="artiste" aria-pressed="false">Artiste</button>
+        </div>
+      </div>
+
+      <div class="cadre">
+        <div id="defilant" class="defilant">
+          <ul id="liste"></ul>
+          <p id="liste-vide" class="liste-vide" hidden></p>
+          <div id="sentinelle"></div>
+        </div>
+      </div>
+
+      <!-- Chargement -->
+      <div class="squelette" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+
+      <!-- Premier lancement, permission à redonner, dossier vide -->
+      <section id="accueil" class="accueil">
+        <div class="accueil-disque" aria-hidden="true"><i></i></div>
+        <h2 id="accueil-titre"></h2>
+        <p id="accueil-texte"></p>
+        <button id="accueil-action" type="button" class="capsule plein grand"></button>
+      </section>
+
+    </main>
+
+    <section id="lecteur" class="lecteur" aria-label="En cours de lecture">
+
+      <div class="platine" aria-hidden="true">
+        <div id="disque" class="disque"><div class="etiquette"></div></div>
+        <div class="reflet"></div>
+      </div>
+
+      <div id="infos" class="infos" aria-live="polite">
+        <p id="titre" class="titre"></p>
+        <p id="artiste" class="artiste"></p>
+      </div>
+
+      <div class="progression">
+        <div id="barre" class="barre" role="slider" tabindex="0" aria-label="Position dans le morceau" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="barre-fond"><div id="barre-pleine" class="barre-pleine"></div></div>
+        </div>
+        <div class="temps"><span id="t-ecoule">0:00</span><span id="t-reste"></span></div>
+      </div>
+
+      <div class="commandes">
+        <button id="btn-melange" type="button" class="rond petit melange" aria-label="Lecture aléatoire" aria-pressed="true">
+          <svg viewBox="0 0 24 24" class="trait" aria-hidden="true"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="M4 4l5 5"/></svg>
+        </button>
+        <button id="btn-precedent" type="button" class="rond saut" aria-label="Morceau précédent">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.5 19.2 9.6 12.9a1.1 1.1 0 0 1 0-1.8l8.9-6.3A.9.9 0 0 1 20 5.5v13a.9.9 0 0 1-1.5.7z"/><rect x="4" y="5" width="2.6" height="14" rx="1.1"/></svg>
+        </button>
+        <button id="btn-lecture" type="button" class="rond jouer" aria-label="Lecture">
+          <svg viewBox="0 0 24 24" class="i-pause" aria-hidden="true"><rect x="6.5" y="5" width="3.6" height="14" rx="1.1"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.1"/></svg>
+          <svg viewBox="0 0 24 24" class="i-lecture" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+        </button>
+        <button id="btn-suivant" type="button" class="rond saut" aria-label="Morceau suivant">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 19.2l8.9-6.3a1.1 1.1 0 0 0 0-1.8L5.5 4.8A.9.9 0 0 0 4 5.5v13a.9.9 0 0 0 1.5.7z"/><rect x="17.4" y="5" width="2.6" height="14" rx="1.1"/></svg>
+        </button>
+        <button id="btn-favori" type="button" class="rond petit coeur" aria-label="Ajouter aux favoris" aria-pressed="false">
+          <svg viewBox="0 0 24 24" class="trait" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8.2 3.4 5 6.6 5c2 0 3.5 1.1 5.4 3.2C13.9 6.1 15.4 5 17.4 5c3.2 0 5.1 3.2 3.9 6.3-1.8 4.6-9.3 9.2-9.3 9.2z"/></svg>
+        </button>
+      </div>
+
+      <label id="zone-volume" class="volume">
+        <svg viewBox="0 0 24 24" class="trait" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/></svg>
+        <span class="sr">Volume</span>
+        <input id="volume" type="range" min="0" max="100" step="1" value="80">
+        <svg viewBox="0 0 24 24" class="trait" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+      </label>
+
+      <p id="ensuite" class="ensuite"></p>
+
+    </section>
   </div>
-
-  <p id="liste-vide" class="message" hidden></p>
-  <ul id="liste"></ul>
-  <div id="sentinelle"></div>
-</section>
-
-<!-- Menu « Autres choix » et confirmation -->
-<dialog id="menu" aria-labelledby="menu-titre">
-  <div id="menu-choix">
-    <p id="menu-titre" class="dialogue-titre"></p>
-    <button id="menu-retirer" type="button"><svg class="icone" aria-hidden="true"><use href="#i-retirer"/></svg><span>Retirer ce morceau</span></button>
-    <button id="menu-fermer" type="button">Fermer</button>
-  </div>
-  <div id="menu-confirmer" hidden>
-    <p class="dialogue-titre">Retirer ce morceau ?</p>
-    <p id="menu-rappel" class="dialogue-texte"></p>
-    <div class="oui-non">
-      <button id="menu-oui" type="button" class="plein">Oui</button>
-      <button id="menu-non" type="button">Non</button>
-    </div>
-  </div>
-</dialog>
+</div>
 
 <p id="avancement" class="avancement" role="status" hidden></p>
 <input id="import" type="file" multiple accept="audio/*,.mp3,.m4a,.aac,.wav" hidden>

@@ -1,7 +1,7 @@
 # Musique — lecteur très simple
 
-Lecteur de musique pour une personne peu à l'aise avec l'informatique : un gros bouton « Écouter »,
-tout en aléatoire. Site statique (HTML / CSS / JavaScript, sans framework ni étape de build), installable
+Lecteur de musique pour une personne peu à l'aise avec l'informatique : sa bibliothèque, ses favoris,
+un vinyle qui tourne, tout en aléatoire. Site statique (HTML / CSS / JavaScript, sans framework ni étape de build), installable
 comme application (PWA). Aucun compte, aucun serveur, aucune musique dans ce dépôt : les morceaux restent
 sur l'appareil.
 
@@ -10,13 +10,13 @@ Le cahier des charges complet est dans [CLAUDE.md](CLAUDE.md).
 ## Installation sur le PC (Chrome)
 
 1. Ouvrir l'adresse du site dans Chrome.
-2. Cliquer sur « Choisir le dossier de musique » et désigner le dossier (une seule fois).
+2. Cliquer sur « Choisir le dossier » et désigner le dossier de musique (une seule fois).
    Quand Chrome demande l'autorisation, répondre **« Autoriser à chaque visite »**.
 3. Menu ⋮ de Chrome → « Caster, enregistrer et partager » → « Installer la page en tant qu'application » :
    une icône « Musique » apparaît sur le bureau.
 
 Les morceaux ajoutés plus tard dans le dossier apparaissent tout seuls au lancement suivant.
-Favoris, morceaux retirés et volume sont enregistrés dans `.lecteur-data.json`, à la racine du dossier de musique.
+Favoris, volume et vue sont enregistrés dans `.lecteur-data.json`, à la racine du dossier de musique.
 
 ## Installation sur l'iPad (Safari)
 
@@ -26,8 +26,12 @@ Favoris, morceaux retirés et volume sont enregistrés dans `.lecteur-data.json`
 
 ## Page admin
 
-`admin.html` (non liée dans l'interface) : remettre un morceau retiré, rescanner le dossier,
+`admin.html` (non liée dans l'interface) : remettre un morceau masqué, rescanner le dossier,
 changer de dossier de musique.
+
+## Design
+
+Maquette et brief dans `design/`. Polices Inter et Newsreader (licence OFL) copiées dans `fonts/`.
 
 ## Essai en local
 

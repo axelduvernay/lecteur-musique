@@ -1,4 +1,4 @@
-// Moteur de lecture : un seul élément <audio>, ordre toujours aléatoire, historique.
+// Moteur de lecture : un seul élément <audio>, aléatoire « en sac », historique.
 
 // Silence très court : joué au premier clic, il autorise Safari à enchaîner les morceaux.
 const SILENCE = (() => {
@@ -25,14 +25,17 @@ function melanger(t) {
   return t;
 }
 
-// surPiste(id) : un morceau commence · surEtat() : lecture/pause a changé
-// surPanne('acces' | 'lecture' | 'vide') : la lecture s'est arrêtée toute seule
-export function creerLecteur({ getFile, surPiste, surEtat, surPanne }) {
+// surPiste(id | null) : le morceau en cours a changé · surEtat() : lecture/pause a changé
+// surTemps(position, duree) : la position a avancé
+// surPanne('acces' | 'lecture') : la lecture s'est arrêtée toute seule
+export function creerLecteur({ getFile, surPiste, surEtat, surTemps, surPanne }) {
   const audio = new Audio();
   audio.preload = 'auto';
 
-  let portee = new Set(); // morceaux qui peuvent être joués
-  let aVenir = [];        // reste du tour en cours, déjà mélangé (on prend à la fin)
+  let ordre = [];         // morceaux jouables, dans l'ordre affiché
+  let portee = new Set(); // les mêmes, pour les tests rapides
+  let aleatoire = true;
+  let sac = [];           // reste du tour aléatoire, déjà mélangé (on prend à la fin)
   let historique = [];
   let curseur = -1;       // position dans l'historique
   let courant = null;
@@ -41,6 +44,8 @@ export function creerLecteur({ getFile, surPiste, surEtat, surPanne }) {
   let echecs = 0;
   let deverrouille = false;
 
+  const enCours = () => url !== '' && audio.src === url;
+
   function noter(id) {
     historique.push(id);
     if (historique.length > HISTORIQUE_MAX) historique.shift();
@@ -48,15 +53,23 @@ export function creerLecteur({ getFile, surPiste, surEtat, surPanne }) {
     return id;
   }
 
-  function tirer() {
-    if (curseur < historique.length - 1) return historique[++curseur];
-    if (!aVenir.length) {
-      aVenir = melanger([...portee]);
+  // Prochain morceau hors historique. Aléatoire : pas de répétition avant la fin du tour.
+  function nouveau(consommer) {
+    if (!ordre.length) return null;
+    if (!aleatoire) return ordre[(ordre.indexOf(courant) + 1) % ordre.length];
+    if (!sac.length) {
+      sac = melanger([...ordre]);
       // Nouveau tour : ne pas rejouer tout de suite le morceau qui vient de passer.
-      const dernier = aVenir.length - 1;
-      if (dernier > 0 && aVenir[dernier] === courant) [aVenir[0], aVenir[dernier]] = [aVenir[dernier], aVenir[0]];
+      const dernier = sac.length - 1;
+      if (dernier > 0 && sac[dernier] === courant) [sac[0], sac[dernier]] = [sac[dernier], sac[0]];
     }
-    return aVenir.length ? noter(aVenir.pop()) : null;
+    return consommer ? sac.pop() : sac[sac.length - 1];
+  }
+
+  // Le morceau qui suivra, sans rien changer.
+  function apercu() {
+    for (let c = curseur + 1; c < historique.length; c++) if (portee.has(historique[c])) return historique[c];
+    return nouveau(false);
   }
 
   function arreter() {
@@ -64,25 +77,31 @@ export function creerLecteur({ getFile, surPiste, surEtat, surPanne }) {
     audio.pause();
     audio.removeAttribute('src');
     audio.load();
+    if (url) URL.revokeObjectURL(url);
+    url = '';
     courant = null;
-    surPanne('vide');
+    surPiste(null);
+    surEtat();
   }
 
   function suivant() {
-    for (let essais = historique.length + portee.size + 1; essais > 0; essais--) {
-      const id = tirer();
-      if (id === null) break;
+    while (curseur < historique.length - 1) {
+      const id = historique[++curseur];
       if (portee.has(id)) return lire(id);
     }
-    arreter();
+    const id = nouveau(true);
+    if (id === null) return arreter();
+    lire(noter(id));
   }
 
   function precedent() {
     let c = curseur - 1;
     while (c >= 0 && !portee.has(historique[c])) c--;
-    if (c < 0) {
-      audio.currentTime = 0;
-      audio.play().catch(() => {});
+    if (c < 0 || (enCours() && audio.currentTime > 3)) {
+      if (enCours()) {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+      }
       return;
     }
     curseur = c;
@@ -94,7 +113,7 @@ export function creerLecteur({ getFile, surPiste, surEtat, surPanne }) {
     echecs++;
     if (echecs > Math.min(portee.size, ECHECS_MAX)) {
       echecs = 0;
-      audio.pause();
+      arreter();
       return surPanne('lecture');
     }
     suivant();
@@ -110,7 +129,7 @@ export function creerLecteur({ getFile, surPiste, surEtat, surPanne }) {
     } catch (e) {
       if (j !== jeton) return;
       if (e.name === 'NotAllowedError' || e.name === 'SecurityError') {
-        audio.pause();
+        arreter();
         return surPanne('acces');
       }
       return echec();
@@ -130,16 +149,26 @@ export function creerLecteur({ getFile, surPiste, surEtat, surPanne }) {
     audio.play().catch(() => {});
   }
 
-  audio.addEventListener('ended', () => { if (audio.src === url) suivant(); });
-  audio.addEventListener('error', () => { if (url && audio.src === url) echec(); });
-  audio.addEventListener('playing', () => { if (audio.src === url) echecs = 0; surEtat(); });
-  audio.addEventListener('play', surEtat);
-  audio.addEventListener('pause', surEtat);
+  const temps = () => { if (enCours()) surTemps(audio.currentTime, audio.duration); };
+  for (const nom of ['timeupdate', 'durationchange', 'seeked']) audio.addEventListener(nom, temps);
+  audio.addEventListener('ended', () => { if (enCours()) suivant(); });
+  audio.addEventListener('error', () => { if (enCours()) echec(); });
+  audio.addEventListener('playing', () => { if (enCours()) echecs = 0; surEtat(); });
+  audio.addEventListener('play', () => surEtat());
+  audio.addEventListener('pause', () => surEtat());
 
   return {
     get courant() { return courant; },
     get enPause() { return audio.paused; },
+    get duree() { return enCours() && Number.isFinite(audio.duration) ? audio.duration : 0; },
     set volume(v) { audio.volume = Math.min(1, Math.max(0, v)); },
+
+    get aleatoire() { return aleatoire; },
+    set aleatoire(oui) {
+      aleatoire = !!oui;
+      sac = aleatoire ? melanger(ordre.filter((id) => id !== courant)) : [];
+      historique.length = curseur + 1; // ce qui suit est recalculé
+    },
 
     // Sur iPad et iPhone le volume ne se règle qu'avec les boutons de l'appareil.
     volumeReglable: (() => {
@@ -148,36 +177,42 @@ export function creerLecteur({ getFile, surPiste, surEtat, surPanne }) {
       return essai.volume === 0.5;
     })(),
 
-    // Nouvelle lecture aléatoire, en commençant éventuellement par un morceau précis.
+    // Nouvelle lecture sur cette liste, en commençant éventuellement par un morceau précis.
     lancer(ids, premier) {
       deverrouiller();
-      portee = new Set(ids);
-      curseur = historique.length - 1;
+      ordre = [...ids];
+      portee = new Set(ordre);
+      historique.length = curseur + 1;
       if (premier == null) {
-        aVenir = [];
+        sac = [];
         suivant();
       } else {
-        aVenir = melanger([...portee]).filter((id) => id !== premier);
+        sac = aleatoire ? melanger(ordre.filter((id) => id !== premier)) : [];
         lire(noter(premier));
       }
     },
 
-    // La liste des morceaux jouables a changé (favori, morceau retiré, morceau ajouté).
+    // La liste des morceaux jouables a changé (favori, tri, morceau ajouté).
     definirPortee(ids) {
-      const nouvelle = new Set(ids);
-      aVenir = aVenir.filter((id) => nouvelle.has(id));
-      if (aVenir.length) {
-        for (const id of nouvelle) {
-          if (!portee.has(id) && id !== courant) aVenir.splice(Math.floor(Math.random() * (aVenir.length + 1)), 0, id);
+      const avant = portee;
+      ordre = [...ids];
+      portee = new Set(ordre);
+      sac = sac.filter((id) => portee.has(id));
+      if (sac.length) {
+        for (const id of ordre) {
+          if (!avant.has(id) && id !== courant) sac.splice(Math.floor(Math.random() * (sac.length + 1)), 0, id);
         }
       }
-      portee = nouvelle;
     },
 
+    apercu,
     suivant,
     precedent,
-    reprendre() { audio.play().catch(() => {}); },
+    arreter,
+    reprendre() { if (enCours()) audio.play().catch(() => {}); },
     pause() { audio.pause(); },
-    basculer() { if (audio.paused) audio.play().catch(() => {}); else audio.pause(); },
+    basculer() { if (!enCours()) return; if (audio.paused) audio.play().catch(() => {}); else audio.pause(); },
+    chercher(ratio) { if (this.duree) audio.currentTime = Math.min(1, Math.max(0, ratio)) * this.duree; },
+    avancer(secondes) { if (this.duree) audio.currentTime = Math.min(this.duree, Math.max(0, audio.currentTime + secondes)); },
   };
 }

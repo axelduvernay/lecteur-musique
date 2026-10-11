@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Lecteur — lecture aléatoire</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5EFE7}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit}
+input{font:inherit}
+input::placeholder{color:#6E6359}
+a{color:#A8430F}a:hover{color:#7A2A08}
+.tint{transition:box-shadow .15s ease}
+.tint:hover{box-shadow:inset 0 0 0 100px rgba(29,26,23,0.045)}
+.row{transition:background .15s ease}
+.row:hover{background:rgba(29,26,23,0.035)}
+.heart-off{opacity:0;transition:opacity .15s ease}
+.row:hover .heart-off,.heart-off:focus-visible{opacity:1}
+.pill{transition:opacity .15s ease}.pill:hover{opacity:.86}
+button:focus-visible,input:focus-visible{outline:2px solid #1D1A17;outline-offset:3px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.disc.spin{animation:spin 6s linear infinite}
+@keyframes eq{0%{transform:scaleY(.25)}100%{transform:scaleY(1)}}
+.eq span{display:block;width:2.5px;height:14px;border-radius:2px;background:#C24E12;transform-origin:bottom;animation:eq .7s ease-in-out infinite alternate}
+.eq span:nth-child(2){animation-delay:-.35s}
+.eq span:nth-child(3){animation-delay:-.6s}
+@keyframes blink{50%{opacity:0}}
+.caret{display:inline-block;width:2px;height:.8em;margin-left:5px;vertical-align:-0.05em;background:#C24E12;animation:blink 1s steps(1) infinite}
+@media (prefers-reduced-motion:reduce){.disc.spin,.eq span,.caret{animation:none}}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F5EFE7; color: #1D1A17; font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-weight: 400; -webkit-font-smoothing: antialiased; padding: 40px clamp(16px, 4vw, 56px)">
+<div style="max-width: 1328px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 32px; min-height: 64px">
+<h1 style="position: relative; margin: 0; font-family: 'Instrument Serif', 'Times New Roman', serif; font-weight: 400; font-size: clamp(36px, 3.7vw, 52px); line-height: 1.1; letter-spacing: -0.01em">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap">{{ greetA }}{{ greetB }}</span>
+<span aria-hidden="true" style="visibility: hidden">{{ greetA }}<em>{{ greetB }}</em></span>
+<span aria-hidden="true" style="position: absolute; left: 0; top: 0; right: 0">{{ typedA }}<em>{{ typedB }}</em><sc-if value="{{ caret }}" hint-placeholder-val="{{ true }}"><span class="caret"></span></sc-if></span>
+</h1>
+<button type="button" class="tint" style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 20px; border: 1px solid #1D1A17; border-radius: 999px; background: transparent; font-size: 15px; font-weight: 500; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.5h7.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"></path></svg>
+<span>Définir le dossier</span>
+</button>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; gap: 48px 56px; align-items: flex-start">
+
+<nav aria-label="Bibliothèque" style="flex: 1 1 180px; max-width: 200px; display: flex; flex-direction: column; gap: 4px; padding-top: 6px">
+<button type="button" class="tint" onClick="{{ showFav }}" aria-current="{{ favCurrent }}" style="display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: {{ favBg }}; font-size: 16px; font-weight: {{ favWeight }}; text-align: left; cursor: pointer">
+<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#C24E12" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8.2 3.4 5 6.6 5c2 0 3.5 1.1 5.4 3.2C13.9 6.1 15.4 5 17.4 5c3.2 0 5.1 3.2 3.9 6.3-1.8 4.6-9.3 9.2-9.3 9.2z"></path></svg>
+<span style="flex: 1">Favoris</span>
+<span style="font-size: 14px; font-weight: 400; color: #6E6359; font-variant-numeric: tabular-nums">{{ favCount }}</span>
+</button>
+<button type="button" class="tint" onClick="{{ showAll }}" aria-current="{{ allCurrent }}" style="display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: {{ allBg }}; font-size: 16px; font-weight: {{ allWeight }}; text-align: left; cursor: pointer">
+<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#C24E12" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="17" cy="16" r="3"></circle></svg>
+<span style="flex: 1">Tout</span>
+<span style="font-size: 14px; font-weight: 400; color: #6E6359; font-variant-numeric: tabular-nums">{{ allCount }}</span>
+</button>
+</nav>
+
+<section aria-label="Liste des morceaux" style="flex: 999 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 28px">
+
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0; font-size: 34px; line-height: 1.1; font-weight: 600; letter-spacing: -0.03em">{{ viewTitle }}</h2>
+<p style="margin: 0; font-size: 15px; color: #6E6359">{{ countLabel }}</p>
+</div>
+<button type="button" class="pill" onClick="{{ shuffleAll }}" style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 22px 0 18px; border: 0; border-radius: 999px; background: #1D1A17; color: #FBF8F3; font-size: 15px; font-weight: 500; cursor: pointer">
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5"></path><path d="M4 20 21 3"></path><path d="M21 16v5h-5"></path><path d="m15 15 6 6"></path><path d="M4 4l5 5"></path></svg>
+<span>Lecture aléatoire</span>
+</button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+<label style="position: relative; flex: 1 1 240px; display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 16px; background: #ECE4DA; border-radius: 12px; color: #6E6359">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap">Rechercher un titre ou un artiste</span>
+<input type="search" value="{{ query }}" onChange="{{ onQuery }}" placeholder="Rechercher" style="flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; font-size: 16px; color: #1D1A17; outline: none">
+</label>
+<div style="display: flex; gap: 2px; padding: 2px; background: #ECE4DA; border-radius: 12px">
+<button type="button" onClick="{{ sortTitre }}" aria-pressed="{{ titrePressed }}" style="height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: {{ titreBg }}; box-shadow: {{ titreShadow }}; font-size: 15px; font-weight: 500; cursor: pointer">Titre</button>
+<button type="button" onClick="{{ sortArtiste }}" aria-pressed="{{ artistePressed }}" style="height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: {{ artisteBg }}; box-shadow: {{ artisteShadow }}; font-size: 15px; font-weight: 500; cursor: pointer">Artiste</button>
+</div>
+</div>
+
+<div style="max-height: 576px; overflow-y: auto; display: flex; flex-direction: column">
+<sc-for list="{{ rows }}" as="row" hint-placeholder-count="8">
+<div class="row" style="display: grid; grid-template-columns: minmax(0, 1fr) 44px; column-gap: 8px; align-items: center; padding-right: 4px; border-bottom: 1px solid #E5DBCF">
+<button type="button" onClick="{{ row.pick }}" aria-label="{{ row.label }}" style="width: 100%; display: grid; grid-template-columns: 20px minmax(0, 1.4fr) minmax(0, 1fr) 48px; gap: 16px; align-items: center; min-height: 63px; padding: 0 0 0 12px; border: 0; background: transparent; text-align: left; cursor: pointer">
+<span style="display: flex; align-items: center">
+<sc-if value="{{ row.eq }}" hint-placeholder-val="{{ false }}">
+<span class="eq" aria-hidden="true" style="display: flex; align-items: flex-end; gap: 2.5px; height: 14px"><span></span><span></span><span></span></span>
+</sc-if>
+<sc-if value="{{ row.paused }}" hint-placeholder-val="{{ false }}">
+<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" fill="#C24E12"></path></svg>
+</sc-if>
+</span>
+<span style="font-size: 17px; font-weight: 500; letter-spacing: -0.01em; color: {{ row.titleColor }}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ row.title }}</span>
+<span style="font-size: 16px; color: #6E6359; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ row.artist }}</span>
+<span style="font-size: 15px; color: #6E6359; text-align: right; font-variant-numeric: tabular-nums">{{ row.dur }}</span>
+</button>
+<button type="button" class="{{ row.heartClass }}" onClick="{{ row.fav }}" aria-label="{{ row.favLabel }}" aria-pressed="{{ row.favPressed }}" style="width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: {{ row.heartColor }}; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="{{ row.heartFill }}" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8.2 3.4 5 6.6 5c2 0 3.5 1.1 5.4 3.2C13.9 6.1 15.4 5 17.4 5c3.2 0 5.1 3.2 3.9 6.3-1.8 4.6-9.3 9.2-9.3 9.2z"></path></svg>
+</button>
+</div>
+</sc-for>
+<sc-if value="{{ emptyFav }}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; padding: 40px 12px; font-size: 16px; line-height: 1.6; color: #6E6359">Aucun favori pour l'instant.<br>Touchez le cœur à côté d'un morceau pour l'ajouter ici.</p>
+</sc-if>
+<sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; padding: 40px 12px; font-size: 16px; color: #6E6359">Aucun morceau ne correspond à « {{ query }} ».</p>
+</sc-if>
+</div>
+</div>
+
+</section>
+
+<section aria-label="En cours de lecture" style="flex: 1 1 320px; max-width: 360px; background: #FBF8F3; border-radius: 24px; padding: 40px 32px 32px; display: flex; flex-direction: column; align-items: stretch; gap: 28px">
+
+<div style="display: flex; justify-content: center">
+<div style="position: relative; width: 220px; height: 220px">
+<div class="disc {{ spinClass }}" aria-hidden="true" style="position: absolute; inset: 0; border-radius: 50%; background: repeating-radial-gradient(circle at 50% 50%, #221A15 0 1px, #17110E 1px 3px); box-shadow: 0 22px 40px -22px rgba(60,30,10,0.45); display: flex; align-items: center; justify-content: center">
+<div style="position: relative; width: 80px; height: 80px; border-radius: 50%; background: #C24E12; display: flex; align-items: center; justify-content: center">
+<div style="position: absolute; top: 13px; left: 50%; width: 14px; height: 2px; margin-left: -7px; border-radius: 1px; background: #F5D9C2"></div>
+<div style="width: 9px; height: 9px; border-radius: 50%; background: #17110E"></div>
+</div>
+</div>
+<div aria-hidden="true" style="position: absolute; inset: 0; border-radius: 50%; pointer-events: none; background: conic-gradient(from 20deg, rgba(255,255,255,0) 0deg, rgba(255,255,255,0.11) 30deg, rgba(255,255,255,0) 60deg, rgba(255,255,255,0) 200deg, rgba(255,255,255,0.07) 230deg, rgba(255,255,255,0) 260deg)"></div>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px; text-align: center">
+<p style="margin: 0; font-size: 24px; line-height: 1.2; font-weight: 600; letter-spacing: -0.025em; text-wrap: balance">{{ cur.title }}</p>
+<p style="margin: 0; font-size: 17px; color: #6E6359">{{ cur.artist }}</p>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="position: relative; height: 4px; border-radius: 999px; background: #E5DBCF; overflow: hidden">
+<div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{ pct }}%; background: #1D1A17"></div>
+</div>
+<div style="display: flex; justify-content: space-between; font-size: 13px; color: #6E6359; font-variant-numeric: tabular-nums">
+<span>{{ posLabel }}</span>
+<span>{{ durLabel }}</span>
+</div>
+</div>
+
+<div style="display: flex; align-items: center; justify-content: space-between">
+<button type="button" class="tint" onClick="{{ toggleShuffle }}" aria-label="Lecture aléatoire" aria-pressed="{{ shufflePressed }}" style="position: relative; width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: {{ shColor }}; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5"></path><path d="M4 20 21 3"></path><path d="M21 16v5h-5"></path><path d="m15 15 6 6"></path><path d="M4 4l5 5"></path></svg>
+<sc-if value="{{ shuffleOn }}" hint-placeholder-val="{{ true }}"><span aria-hidden="true" style="position: absolute; bottom: 4px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: #C24E12"></span></sc-if>
+</button>
+<button type="button" class="tint" onClick="{{ prev }}" aria-label="Morceau précédent" style="width: 48px; height: 48px; border: 0; border-radius: 50%; background: transparent; color: #1D1A17; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.5 19.2 9.6 12.9a1.1 1.1 0 0 1 0-1.8l8.9-6.3A.9.9 0 0 1 20 5.5v13a.9.9 0 0 1-1.5.7z" fill="currentColor"></path><rect x="4" y="5" width="2.6" height="14" rx="1.1" fill="currentColor"></rect></svg>
+</button>
+<button type="button" onClick="{{ togglePlay }}" aria-label="{{ playLabel }}" style="width: 64px; height: 64px; border: 0; border-radius: 50%; background: #1D1A17; color: #FBF8F3; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<sc-if value="{{ playing }}" hint-placeholder-val="{{ true }}">
+<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="3.6" height="14" rx="1.1" fill="currentColor"></rect><rect x="13.9" y="5" width="3.6" height="14" rx="1.1" fill="currentColor"></rect></svg>
+</sc-if>
+<sc-if value="{{ paused }}" hint-placeholder-val="{{ false }}">
+<svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" style="margin-left: 3px"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" fill="currentColor"></path></svg>
+</sc-if>
+</button>
+<button type="button" class="tint" onClick="{{ next }}" aria-label="Morceau suivant" style="width: 48px; height: 48px; border: 0; border-radius: 50%; background: transparent; color: #1D1A17; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 19.2l8.9-6.3a1.1 1.1 0 0 0 0-1.8L5.5 4.8A.9.9 0 0 0 4 5.5v13a.9.9 0 0 0 1.5.7z" fill="currentColor"></path><rect x="17.4" y="5" width="2.6" height="14" rx="1.1" fill="currentColor"></rect></svg>
+</button>
+<button type="button" class="tint" onClick="{{ toggleCurFav }}" aria-label="{{ curFavLabel }}" aria-pressed="{{ curFavPressed }}" style="width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: {{ curFavColor }}; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="{{ curFavFill }}" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8.2 3.4 5 6.6 5c2 0 3.5 1.1 5.4 3.2C13.9 6.1 15.4 5 17.4 5c3.2 0 5.1 3.2 3.9 6.3-1.8 4.6-9.3 9.2-9.3 9.2z"></path></svg>
+</button>
+</div>
+
+<label style="position: relative; display: flex; align-items: center; gap: 12px; color: #6E6359">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M11 5 6 9H3v6h3l5 4z"></path></svg>
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap">Volume</span>
+<input type="range" min="0" max="100" value="{{ volume }}" onChange="{{ onVolume }}" style="flex: 1; min-width: 0; height: 24px; accent-color: #1D1A17; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M11 5 6 9H3v6h3l5 4z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg>
+</label>
+
+<p style="margin: 0; padding-top: 20px; border-top: 1px solid #ECE3D8; font-size: 14px; line-height: 1.5; color: #6E6359; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Ensuite : <span style="color: #1D1A17; font-weight: 500">{{ nextT.title }}</span> · {{ nextT.artist }}</p>
+
+</section>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { typed: 0, caret: true, view: "tout", favs: [1, 3, 4, 9], current: 1, playing: true, pos: 74, shuffle: true, upNext: 9, history: [], query: "", sort: "titre", volume: 70 };
+  }
+
+  greetA() { return "Salut Rico ! "; }
+  greetB() { return "On écoute quoi ce matin ?"; }
+
+  componentDidMount() {
+    const full = this.greetA() + this.greetB();
+    const step = () => {
+      const n = Math.min(full.length, this.state.typed + 1);
+      this.setState({ typed: n });
+      if (n < full.length) {
+        const ch = full.charAt(n - 1);
+        this.typeT = setTimeout(step, ch === "!" ? 480 : 40 + Math.random() * 50);
+      } else {
+        this.typeT = setTimeout(() => this.setState({ caret: false }), 2600);
+      }
+    };
+    this.typeT = setTimeout(step, 450);
+  }
+
+  componentWillUnmount() {
+    if (this.typeT) clearTimeout(this.typeT);
+    if (this.timer) clearInterval(this.timer);
+  }
+
+  ensureTimer() {
+    if (this.timer) return;
+    this.timer = setInterval(() => {
+      const s = this.state;
+      if (!s.playing) return;
+      const t = this.find(s.current);
+      if (s.pos + 1 >= t.dur) this.next();
+      else this.setState({ pos: s.pos + 1 });
+    }, 1000);
+  }
+
+  lib() {
+    return [
+      { id: 1, title: "La Bohème", artist: "Charles Aznavour", dur: 245 },
+      { id: 2, title: "Les Feuilles mortes", artist: "Yves Montand", dur: 232 },
+      { id: 3, title: "La Mer", artist: "Charles Trenet", dur: 200 },
+      { id: 4, title: "Ne me quitte pas", artist: "Jacques Brel", dur: 231 },
+      { id: 5, title: "Le Sud", artist: "Nino Ferrer", dur: 222 },
+      { id: 6, title: "L'Aigle noir", artist: "Barbara", dur: 270 },
+      { id: 7, title: "Les Champs-Élysées", artist: "Joe Dassin", dur: 162 },
+      { id: 8, title: "La Javanaise", artist: "Serge Gainsbourg", dur: 151 },
+      { id: 9, title: "Avec le temps", artist: "Léo Ferré", dur: 256 },
+      { id: 10, title: "Le Métèque", artist: "Georges Moustaki", dur: 165 },
+      { id: 11, title: "What a Wonderful World", artist: "Louis Armstrong", dur: 140 },
+      { id: 12, title: "Les Copains d'abord", artist: "Georges Brassens", dur: 222 },
+      { id: 13, title: "Emmenez-moi", artist: "Charles Aznavour", dur: 215 },
+      { id: 14, title: "L'Été indien", artist: "Joe Dassin", dur: 242 }
+    ];
+  }
+
+  find(id) {
+    const lib = this.lib();
+    return lib.find((t) => t.id === id) || lib[0];
+  }
+
+  pool() {
+    const s = this.state;
+    const lib = this.lib();
+    if (s.view === "favoris") {
+      const f = lib.filter((t) => s.favs.indexOf(t.id) !== -1);
+      if (f.length) return f;
+    }
+    return lib;
+  }
+
+  ordered() {
+    const bySort = this.state.sort === "artiste"
+      ? (a, b) => a.artist.localeCompare(b.artist, "fr") || a.title.localeCompare(b.title, "fr")
+      : (a, b) => a.title.localeCompare(b.title, "fr");
+    return this.pool().slice().sort(bySort);
+  }
+
+  randomOther(exclude) {
+    const all = this.pool();
+    const p = all.filter((t) => exclude.indexOf(t.id) === -1);
+    const from = p.length ? p : all;
+    return from[Math.floor(Math.random() * from.length)].id;
+  }
+
+  nextId() {
+    const s = this.state;
+    if (s.shuffle) return s.upNext;
+    const list = this.ordered();
+    const i = list.findIndex((t) => t.id === s.current);
+    return list[(i + 1) % list.length].id;
+  }
+
+  next() {
+    const s = this.state;
+    const nid = this.nextId();
+    this.setState({ current: nid, pos: 0, playing: true, history: s.history.concat([s.current]).slice(-50), upNext: this.randomOther([nid, s.current]) });
+    this.ensureTimer();
+  }
+
+  prev() {
+    const s = this.state;
+    if (s.pos > 3 || !s.history.length) { this.setState({ pos: 0 }); this.ensureTimer(); return; }
+    const pid = s.history[s.history.length - 1];
+    this.setState({ current: pid, pos: 0, playing: true, history: s.history.slice(0, -1), upNext: s.current });
+    this.ensureTimer();
+  }
+
+  pick(id) {
+    const s = this.state;
+    if (id === s.current) { this.setState({ playing: !s.playing }); this.ensureTimer(); return; }
+    this.setState({ current: id, pos: 0, playing: true, history: s.history.concat([s.current]).slice(-50), upNext: this.randomOther([id, s.current]) });
+    this.ensureTimer();
+  }
+
+  toggleFav(id) {
+    const f = this.state.favs;
+    this.setState({ favs: f.indexOf(id) !== -1 ? f.filter((x) => x !== id) : f.concat([id]) });
+  }
+
+  setView(v) {
+    this.setState({ view: v }, () => this.setState({ upNext: this.randomOther([this.state.current]) }));
+  }
+
+  fmt(sec) {
+    const m = Math.floor(sec / 60);
+    const r = Math.floor(sec % 60);
+    return m + ":" + (r < 10 ? "0" : "") + r;
+  }
+
+  renderVals() {
+    const s = this.state;
+    const lib = this.lib();
+    const cur = this.find(s.current);
+    const nextT = this.find(this.nextId());
+    const isFavView = s.view === "favoris";
+    const favTracks = lib.filter((t) => s.favs.indexOf(t.id) !== -1);
+    const base = isFavView ? favTracks : lib;
+    const bySort = s.sort === "artiste"
+      ? (a, b) => a.artist.localeCompare(b.artist, "fr") || a.title.localeCompare(b.title, "fr")
+      : (a, b) => a.title.localeCompare(b.title, "fr");
+    const q = (s.query || "").trim().toLowerCase();
+    const list = base.slice().sort(bySort).filter((t) => !q || (t.title + " " + t.artist).toLowerCase().indexOf(q) !== -1);
+    const mins = Math.round(base.reduce((a, t) => a + t.dur, 0) / 60);
+
+    const A = this.greetA();
+    const B = this.greetB();
+    const n = s.typed;
+
+    const rows = list.map((t) => {
+      const isCur = t.id === s.current;
+      const isFav = s.favs.indexOf(t.id) !== -1;
+      return {
+        title: t.title,
+        artist: t.artist,
+        dur: this.fmt(t.dur),
+        eq: isCur && s.playing,
+        paused: isCur && !s.playing,
+        titleColor: isCur ? "#A8430F" : "#1D1A17",
+        label: (isCur && s.playing ? "Mettre en pause : " : "Écouter : ") + t.title + ", " + t.artist,
+        pick: () => this.pick(t.id),
+        fav: () => this.toggleFav(t.id),
+        favPressed: isFav ? "true" : "false",
+        favLabel: (isFav ? "Retirer des favoris : " : "Ajouter aux favoris : ") + t.title,
+        heartClass: isFav ? "heart" : "heart heart-off",
+        heartColor: isFav ? "#C24E12" : "#6E6359",
+        heartFill: isFav ? "#C24E12" : "none"
+      };
+    });
+
+    const curFav = s.favs.indexOf(cur.id) !== -1;
+    const sel = "#E9E0D5";
+    const on = "#FBF8F3";
+    const onShadow = "0 1px 2px rgba(29,26,23,0.12)";
+
+    return {
+      greetA: A,
+      greetB: B,
+      typedA: A.slice(0, Math.min(n, A.length)),
+      typedB: n > A.length ? B.slice(0, n - A.length) : "",
+      caret: s.caret,
+
+      favCurrent: isFavView ? "page" : "false",
+      allCurrent: isFavView ? "false" : "page",
+      favBg: isFavView ? sel : "transparent",
+      allBg: isFavView ? "transparent" : sel,
+      favWeight: isFavView ? 600 : 400,
+      allWeight: isFavView ? 400 : 600,
+      favCount: favTracks.length,
+      allCount: lib.length,
+      showFav: () => this.setView("favoris"),
+      showAll: () => this.setView("tout"),
+
+      viewTitle: isFavView ? "Favoris" : "Tous les morceaux",
+      countLabel: base.length + (base.length > 1 ? " morceaux, " : " morceau, ") + mins + " min",
+      rows: rows,
+      emptyFav: isFavView && favTracks.length === 0,
+      noResults: base.length > 0 && rows.length === 0,
+      query: s.query,
+
+      cur: cur,
+      nextT: nextT,
+      playing: s.playing,
+      paused: !s.playing,
+      playLabel: s.playing ? "Pause" : "Lecture",
+      spinClass: s.playing ? "spin" : "",
+      pct: Math.min(100, (s.pos / cur.dur) * 100).toFixed(2),
+      posLabel: this.fmt(s.pos),
+      durLabel: "-" + this.fmt(Math.max(0, cur.dur - s.pos)),
+      shuffleOn: s.shuffle,
+      shufflePressed: s.shuffle ? "true" : "false",
+      shColor: s.shuffle ? "#C24E12" : "#6E6359",
+      curFavPressed: curFav ? "true" : "false",
+      curFavLabel: curFav ? "Retirer des favoris" : "Ajouter aux favoris",
+      curFavColor: curFav ? "#C24E12" : "#6E6359",
+      curFavFill: curFav ? "#C24E12" : "none",
+      toggleCurFav: () => this.toggleFav(cur.id),
+      volume: s.volume,
+
+      titrePressed: s.sort === "titre" ? "true" : "false",
+      artistePressed: s.sort === "artiste" ? "true" : "false",
+      titreBg: s.sort === "titre" ? on : "transparent",
+      artisteBg: s.sort === "artiste" ? on : "transparent",
+      titreShadow: s.sort === "titre" ? onShadow : "none",
+      artisteShadow: s.sort === "artiste" ? onShadow : "none",
+
+      onQuery: (e) => this.setState({ query: e.target.value }),
+      onVolume: (e) => this.setState({ volume: Number(e.target.value) }),
+      togglePlay: () => { this.setState({ playing: !s.playing }); this.ensureTimer(); },
+      next: () => this.next(),
+      prev: () => this.prev(),
+      toggleShuffle: () => this.setState({ shuffle: !s.shuffle, upNext: this.randomOther([s.current]) }),
+      shuffleAll: () => {
+        const id = this.randomOther([s.current]);
+        this.setState({ shuffle: true, current: id, pos: 0, playing: true, history: s.history.concat([s.current]).slice(-50), upNext: this.randomOther([id, s.current]) });
+        this.ensureTimer();
+      },
+      sortTitre: () => this.setState({ sort: "titre" }),
+      sortArtiste: () => this.setState({ sort: "artiste" })
+    };
+  }
+}
+</script>
+</body>
+</html>
